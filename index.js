@@ -24,10 +24,8 @@ ELSE
 	RETURN 0
 FI
 `;
+// console.dir(parser.parse(rdseed), {depth: null});
 
-// Sometimes IF has parens, see sha1rnds4
-
-// Sometimes IF is one line
 const vpermilpd = `
 IF (imm8[0] == 0) tmp_dst[63:0] := a[63:0]
 IF (imm8[0] == 1) tmp_dst[63:0] := a[127:64]
@@ -68,6 +66,7 @@ dst[MAX:256] := 0
 // * It had (before cleaning) some non-standard characters like en dashes
 // * Mixed cases of if/then/etc
 // * `set #IE` setting flags
+// * member access `tsrc.sign`
 const vfixupimmsd = `
 enum TOKEN_TYPE {
 	QNAN_TOKEN := 0, 
@@ -134,7 +133,7 @@ FI
 dst[127:64] := a[127:64]
 dst[MAX:128] := 0
 `;
-// console.dir(parser.parse(vfixupimmsd), {depth: null});
+console.dir(parser.parse(vfixupimmsd), {depth: null});
 
 // This one has a variable OP operation
 const vcmppd = `
@@ -188,29 +187,3 @@ CASE imm8[7:0] of
 ESAC
 dst[MAX:128] := 0
 `;
-
-const withenum = `
-enum TOKEN_TYPE {
-	QNAN_TOKEN := 0, 
-	SNAN_TOKEN := 1, 
-	ZERO_VALUE_TOKEN := 2, 
-	ONE_VALUE_TOKEN := 3, 
-	NEG_INF_TOKEN := 4, 
-	POS_INF_TOKEN := 5, 
-	NEG_VALUE_TOKEN := 6, 
-	POS_VALUE_TOKEN := 7
-}
-`;
-console.dir(parser.parse(withenum), {depth: null});
-
-const x0 = `tmp_dst[63:0] := a[63:0]`;
-const x1 = `IF (true) tmp_dst[63:0] := a[63:0]`;
-const x2 = `x := a`;
-const x3 = `imm8`;
-const x4 = `imm8[0] := x`;
-
-// console.dir(parser.parse(x0), {depth: null});
-// console.dir(parser.parse(x1), {depth: null});
-// console.dir(parser.parse(x2), {depth: null});
-// console.dir(parser.parse(x3), {depth: null});
-// console.dir(parser.parse(x4), {depth: null});

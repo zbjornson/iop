@@ -140,7 +140,7 @@ Keyword
   / NotToken
   / XorToken
 
-  / FunctionToken
+  / SetToken
   / ReturnToken
   / InToken
   / VoidToken
@@ -324,7 +324,7 @@ EndForToken     = "ENDFOR"     !IdentifierPart
 DoWhileToken    = "DO WHILE"   !IdentifierPart
 EndDoWhileToken = "OD"         !IdentifierPart
 
-BreakToken      = "BREAK"i     !IdentifierPart // mixed UPPER, lower-case (vloadunpackld)
+BreakToken      = "BREAK"i     !IdentifierPart // mixed case (vloadunpackld)
 ContinueToken   = "CONTINUE"   !IdentifierPart
 
 IfToken         = "IF"i        !IdentifierPart
@@ -343,11 +343,12 @@ FalseToken      = "false"      !IdentifierPart
 
 EnumToken       = "enum"       !IdentifierPart // always lower-case
 
-FunctionToken   = "function"   !IdentifierPart
+SetToken        = "set"        !IdentifierPart
 ReturnToken     = "RETURN"i    !IdentifierPart // mixed case (vgf2p8mulb)
-InToken         = "in"         !IdentifierPart
 OfToken         = "OF"i        !IdentifierPart // mixed case (vfixupimmsd)
-VoidToken       = "void"       !IdentifierPart
+
+InToken         = "in"         !IdentifierPart // TODO is this in use?
+VoidToken       = "void"       !IdentifierPart // TODO is this in use?
 
 __
   = (WhiteSpace / LineTerminatorSequence)*
@@ -379,7 +380,7 @@ ArrayLiteral
   / "[" __ elements:ElementList __ "]" {
       return {
         type: "ArrayExpression",
-        elements: elements
+        elements
       };
     }
   / "[" __ elements:ElementList __ "," __ elision:(Elision __)? "]" {
@@ -412,7 +413,7 @@ PropertyNameAndValueList
 
 PropertyAssignment
   = key:PropertyName __ ":" __ value:AssignmentExpression {
-      return { type: "Property", key: key, value: value, kind: "init" };
+      return { type: "Property", key, value, kind: "init" };
     }
 
 PropertyName
@@ -426,21 +427,21 @@ PropertySetParameterList
 MemberExpression
   = head:PrimaryExpression
     tail:(
-        __ "[" __ property:Expression __ "]" {
-          return { property: property, computed: true };
+        "[" property:Expression "]" {
+          return { property, computed: true };
         }
-      / __ "[" __ start:Expression ":" end:Expression __ "]" {
+      / "[" start:Expression ":" end:Expression "]" {
           return { range: {start, end}, computed: true };
         }
-      / __ "." __ property:IdentifierName {
-          return { property: property, computed: false };
+      / "." property:IdentifierName {
+          return { property, computed: false };
         }
     )*
     {
-      return tail.reduce(function(result, element) {
+      return tail.reduce(function(object, element) {
         return {
           type: "MemberExpression",
-          object: result,
+          object,
           ...element
         };
       }, head);
@@ -452,7 +453,7 @@ NewExpression
 CallExpression
   = head:(
       callee:MemberExpression __ args:Arguments {
-        return { type: "CallExpression", callee: callee, arguments: args };
+        return { type: "CallExpression", callee, arguments: args };
       }
     )
     tail:(
@@ -462,14 +463,14 @@ CallExpression
       / __ "[" __ property:Expression __ "]" {
           return {
             type: "MemberExpression",
-            property: property,
+            property,
             computed: true
           };
         }
       / __ "." __ property:IdentifierName {
           return {
             type: "MemberExpression",
-            property: property,
+            property,
             computed: false
           };
         }
@@ -500,8 +501,8 @@ PostfixExpression
   = argument:LeftHandSideExpression _ operator:PostfixOperator {
       return {
         type: "UpdateExpression",
-        operator: operator,
-        argument: argument,
+        operator,
+        argument,
         prefix: false
       };
     }
@@ -516,8 +517,8 @@ UnaryExpression
   / operator:UnaryOperator __ argument:UnaryExpression {
       return {
         type: "UnaryExpression",
-        operator: operator,
-        argument: argument,
+        operator,
+        argument,
         prefix: true
       };
     }
@@ -596,7 +597,7 @@ EqualityExpressionNoIn
 EqualityOperator
   = "=="
   / "!="
-  // Sometimes Intel uses "=", see rdseed
+  / "=" // see rdseed
 
 BitwiseANDExpression
   = head:EqualityExpression
@@ -655,9 +656,9 @@ ConditionalExpression
     {
       return {
         type: "ConditionalExpression",
-        test: test,
-        consequent: consequent,
-        alternate: alternate
+        test,
+        consequent,
+        alternate
       };
     }
   / LogicalORExpression
@@ -669,9 +670,9 @@ ConditionalExpressionNoIn
     {
       return {
         type: "ConditionalExpression",
-        test: test,
-        consequent: consequent,
-        alternate: alternate
+        test,
+        consequent,
+        alternate
       };
     }
   / LogicalORExpressionNoIn
@@ -684,8 +685,8 @@ AssignmentExpression
       return {
         type: "AssignmentExpression",
         operator: ":=",
-        left: left,
-        right: right
+        left,
+        right
       };
     }
   / left:LeftHandSideExpression __
@@ -694,9 +695,9 @@ AssignmentExpression
     {
       return {
         type: "AssignmentExpression",
-        operator: operator,
-        left: left,
-        right: right
+        operator,
+        left,
+        right
       };
     }
   / ConditionalExpression
@@ -709,8 +710,8 @@ AssignmentExpressionNoIn
       return {
         type: "AssignmentExpression",
         operator: ":=",
-        left: left,
-        right: right
+        left,
+        right
       };
     }
   / left:LeftHandSideExpression __
@@ -719,9 +720,9 @@ AssignmentExpressionNoIn
     {
       return {
         type: "AssignmentExpression",
-        operator: operator,
-        left: left,
-        right: right
+        operator,
+        left,
+        right
       };
     }
   / ConditionalExpressionNoIn
@@ -731,12 +732,22 @@ AssignmentOperator
   / "-="
   // As of 3.4.2 Intel only uses +=
 
+SetExpression
+  = SetToken _ "#" flag:Identifier
+  {
+    return {
+      type: "SetExpression",
+      flag
+    }
+  }
+
 Expression
   = head:AssignmentExpression tail:(__ "," __ AssignmentExpression)* {
       return tail.length > 0
         ? { type: "SequenceExpression", expressions: buildList(head, tail, 3) }
         : head;
     }
+  / SetExpression
 
 ExpressionNoIn
   = head:AssignmentExpressionNoIn tail:(__ "," __ AssignmentExpressionNoIn)* {
@@ -748,22 +759,12 @@ ExpressionNoIn
 // ----- A.4 Statements -----
 
 Statement
-  = Block
-  / ExpressionStatement
+  = ExpressionStatement
   / IfStatement
   / IterationStatement
   / ReturnStatement
-  / LabelledStatement
   / CaseStatement
   / EnumDeclaration
-
-Block
-  = "{" __ body:(StatementList __)? "}" {
-      return {
-        type: "BlockStatement",
-        body: optionalList(extractOptional(body, 0))
-      };
-    }
 
 StatementList
   = head:Statement tail:(__ Statement)* { return buildList(head, tail, 1); }
@@ -772,7 +773,7 @@ VariableDeclaration
   = id:Identifier init:(__ Initialiser)? {
       return {
         type: "VariableDeclarator",
-        id: id,
+        id,
         init: extractOptional(init, 1)
       };
     }
@@ -781,7 +782,7 @@ VariableDeclarationNoIn
   = id:Identifier init:(__ InitialiserNoIn)? {
       return {
         type: "VariableDeclarator",
-        id: id,
+        id,
         init: extractOptional(init, 1)
       };
     }
@@ -793,44 +794,44 @@ InitialiserNoIn
   = ":=" __ expression:AssignmentExpressionNoIn { return expression; }
 
 ExpressionStatement
-  = !("{" / FunctionToken) expression:Expression EOS {
+  = !("{") expression:Expression EOS {
       return {
         type: "ExpressionStatement",
-        expression: expression
+        expression
       };
     }
 
 IfStatement
-  = IfToken _ "(" _ test:Expression _ ")" _ consequent:ExpressionStatement
+  = IfToken _ test:Expression _ ThenToken? _ consequent:ExpressionStatement
     {
       return {
         type: "IfStatement",
-        test: test,
-        consequent: consequent,
+        test,
+        consequent,
         alternate: null
       }
     }
-  / IfToken __ test:Expression _ LineTerminatorSequence
-    __ consequent:Statement __
+  / IfToken __ test:Expression _ ThenToken? _ LineTerminatorSequence
+    __ consequent:StatementList __
     ElseToken _ LineTerminatorSequence
-    __ alternate:Statement __
+    __ alternate:StatementList __
     EndIfToken _ LineTerminatorSequence
     {
       return {
         type: "IfStatement",
-        test: test,
-        consequent: consequent,
-        alternate: alternate
+        test,
+        consequent,
+        alternate
       };
     }
-  / IfToken __ test:Expression _ LineTerminatorSequence
-    __ consequent:Statement __
+  / IfToken __ test:Expression _ ThenToken? _ LineTerminatorSequence
+    __ consequent:StatementList __
     EndIfToken _ LineTerminatorSequence
     {
       return {
         type: "IfStatement",
-        test: test,
-        consequent: consequent,
+        test,
+        consequent,
         alternate: null
       };
     }
@@ -846,9 +847,9 @@ IterationStatement
     {
       return {
         type: "ForStatement",
-        init: init,
-        varmax: varmax,
-        body: body
+        init,
+        varmax,
+        body
       };
     }
 
@@ -867,8 +868,19 @@ CaseStatement
     {
       return {
         type: "CaseStatement",
-        discriminant: discriminant,
-        cases: cases
+        discriminant,
+        cases
+      };
+    }
+  // This form I think is an error; I don't know what it means
+  / CaseToken _ "(" discriminant:Expression _ OfToken _ id:Identifier ")" _ LineTerminatorSequence
+    cases:CaseBlock
+    EndCaseToken
+    {
+      return {
+        type: "CaseStatement",
+        discriminant,
+        cases
       };
     }
 
@@ -890,10 +902,10 @@ CaseClauses
   = head:CaseClause tail:(__ CaseClause)* { return buildList(head, tail, 1); }
 
 CaseClause
-  = __ test:Expression __ ":" consequent:(__ Statement)? {
+  = __ test:Expression _ ":" consequent:(__ Statement)? {
       return {
         type: "Case",
-        test: test,
+        test,
         consequent: optionalList(extractOptional(consequent, 1))
       };
     }
@@ -905,11 +917,6 @@ DefaultClause
         test: null,
         consequent: optionalList(extractOptional(consequent, 1))
       };
-    }
-
-LabelledStatement
-  = label:Identifier __ ":" __ body:Statement {
-      return { type: "LabeledStatement", label: label, body: body };
     }
 
 EnumDeclaration
@@ -946,34 +953,37 @@ EnumMember
 
 // ----- A.5 Functions and Programs -----
 
+Parameter
+  = !ReservedWord name:IdentifierName 
+    range:("[" start:NumericLiteral ":" end:NumericLiteral "]" {
+      return {start, end};
+    })?
+    {
+      return range ? {
+          type: "Parameter",
+          name,
+          range
+        } : {
+          type: "Parameter",
+          name
+        };
+    }
+
 FunctionDeclaration
-  = FunctionToken __ id:Identifier __
-    "(" __ params:(FormalParameterList __)? ")" __
-    "{" __ body:FunctionBody __ "}"
+  = id:Identifier "(" params:(FormalParameterList _)? ")" _ "{"
+    __ body:FunctionBody __
+    "}"
     {
       return {
         type: "FunctionDeclaration",
-        id: id,
+        id,
         params: optionalList(extractOptional(params, 0)),
-        body: body
-      };
-    }
-
-FunctionExpression
-  = FunctionToken __ id:(Identifier __)?
-    "(" __ params:(FormalParameterList __)? ")" __
-    "{" __ body:FunctionBody __ "}"
-    {
-      return {
-        type: "FunctionExpression",
-        id: extractOptional(id, 0),
-        params: optionalList(extractOptional(params, 0)),
-        body: body
+        body
       };
     }
 
 FormalParameterList
-  = head:Identifier tail:(__ "," __ Identifier)* {
+  = head:Parameter tail:(_ "," _ Parameter)* {
       return buildList(head, tail, 3);
     }
 

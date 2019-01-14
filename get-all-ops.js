@@ -1,57 +1,39 @@
 const fs = require("fs");
 const sax = require("sax");
-const parser = sax.parser();
+const saxparser = sax.parser();
+const peg = require("pegjs");
+const parser = peg.generate(fs.readFileSync("./grammar.pegjs", "utf8"), {});
 
-const filter = ""; // "SSE2", "AVX", "AVX2", etc.
+const filter = "SSE2"; // "SSE2", "AVX", "AVX2", etc.
 const ops = [];
 let currentTech = "";
+let intrinName = "";
 
-parser.onopentag = ({name, attributes}) => {
-	if (name === "INTRINSIC") currentTech = attributes.TECH;
+saxparser.onopentag = ({name, attributes}) => {
+  if (name === "INTRINSIC") {
+    currentTech = attributes.TECH;
+    intrinName = attributes.NAME;
+  }
 }
 
-parser.ontext = text => {
-	if (parser.tag.name === "OPERATION") {
+saxparser.ontext = text => {
+	if (saxparser.tag.name === "OPERATION") {
 		if (filter ? filter === currentTech : true) {
-			if (text.trim()) ops.push(text.trim());
+			if (text.trim()) {
+        ops.push({name: intrinName, operation: text.trim()});
+      }
 		}
 	}
 };
 
-parser.write(fs.readFileSync("./data/data-3.4.2.xml", "utf8")).close();
+saxparser.write(fs.readFileSync("./data/data-3.4.2.xml", "utf8")).close();
 
-// console.log(ops);
-
-// const tokens = new Set(ops.join(" ").split(/\s+/).filter(x => /^[A-Z]+$/.test(x)));
-// console.log(tokens)
-
-/*
-  'RETURN',
-
-  'IF',
-  'ELSE',
-  'FI',
-  'THEN',
-  
-  'AND',
-  'OR',
-  'NOT',
-  'XOR',
-  'NAND',
-  'BITWISE',
-  
-  'CASE',
-  'ESAC',
-  
-  'FOR',
-  'ENDFOR',
-  'DO',
-  'WHILE',
-  'OD',
-  'BREAK',
-  'CONTINUE',
-
-  'TO',
-
-  'NAN'
-  */
+for (const op of ops) {
+  try {
+    parser.parse(op.operation);
+    console.log("✔", op.name);
+    if (op.name === "_mm_shuffle_pd") console.dir(parser.parse(op.operation), {depth: null});
+  } catch (ex) {
+    console.log("✘", op.name);
+  }
+}
