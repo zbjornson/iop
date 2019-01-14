@@ -1,0 +1,9 @@
+{
+  "scripts": {
+    "get-data": "node ./get-data.js"
+  },
+  "dependencies": {
+    "pegjs": "^0.10.0",
+    "sax": "^1.2.4"
+  }
+}

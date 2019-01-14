@@ -117,21 +117,33 @@ ReservedWord
 
 Keyword
   = CaseToken
+  / EndCaseToken
   / DefaultToken
-  / DeleteToken
-  / DoToken
-  / FinallyToken
+
   / ForToken
   / EndForToken
-  / FunctionToken
+
+  / DoWhileToken
+  / EndDoWhileToken
+
+  / BreakToken
+  / ContinueToken
+
   / IfToken
+  / ThenToken
   / ElseToken
   / EndIfToken
-  / InToken
+
+  / OrToken
+  / AndToken
+  / NandToken
+  / NotToken
+  / XorToken
+
+  / FunctionToken
   / ReturnToken
-  / SwitchToken
+  / InToken
   / VoidToken
-  / WhileToken
 
 Literal
   = BooleanLiteral
@@ -302,33 +314,40 @@ Pc = [\u005F\u203F-\u2040\u2054\uFE33-\uFE34\uFE4D-\uFE4F\uFF3F]
 Zs = [\u0020\u00A0\u1680\u2000-\u200A\u202F\u205F\u3000]
 
 // Tokens
+CaseToken       = "CASE"       !IdentifierPart
+EndCaseToken    = "ESAC"       !IdentifierPart
+DefaultToken    = "DEFAULT"    !IdentifierPart
 
 ForToken        = "FOR"        !IdentifierPart
 EndForToken     = "ENDFOR"     !IdentifierPart
 
-IfToken         = "IF"         !IdentifierPart
-ElseToken       = "ELSE"       !IdentifierPart
-EndIfToken      = "FI"         !IdentifierPart
+DoWhileToken    = "DO WHILE"   !IdentifierPart
+EndDoWhileToken = "OD"         !IdentifierPart
+
+BreakToken      = "BREAK"i     !IdentifierPart // mixed UPPER, lower-case (vloadunpackld)
+ContinueToken   = "CONTINUE"   !IdentifierPart
+
+IfToken         = "IF"i        !IdentifierPart
+ThenToken       = "THEN"i      !IdentifierPart
+ElseToken       = "ELSE"i      !IdentifierPart
+EndIfToken      = "FI"i        !IdentifierPart
+
+AndToken        = "AND"i       !IdentifierPart // mixed case (pclmul128)
+NandToken       = "NAND"       !IdentifierPart
+OrToken         = "OR"         !IdentifierPart
+NotToken        = "NOT"        !IdentifierPart
+XorToken        = "XOR"i       !IdentifierPart // mixed case (pclmul128)
 
 TrueToken       = "true"       !IdentifierPart
 FalseToken      = "false"      !IdentifierPart
 
-BreakToken      = "break"      !IdentifierPart
-CaseToken       = "case"       !IdentifierPart
-ContinueToken   = "continue"   !IdentifierPart
-DefaultToken    = "default"    !IdentifierPart
-DeleteToken     = "delete"     !IdentifierPart
-DoToken         = "do"         !IdentifierPart
-EnumToken       = "enum"       !IdentifierPart
-FinallyToken    = "finally"    !IdentifierPart
-FunctionToken   = "function"   !IdentifierPart
-InToken         = "in"         !IdentifierPart
-ReturnToken     = "return"     !IdentifierPart
-SwitchToken     = "switch"     !IdentifierPart
-VoidToken       = "void"       !IdentifierPart
-WhileToken      = "while"      !IdentifierPart
+EnumToken       = "enum"       !IdentifierPart // always lower-case
 
-// Skipped
+FunctionToken   = "function"   !IdentifierPart
+ReturnToken     = "RETURN"i    !IdentifierPart // mixed case (vgf2p8mulb)
+InToken         = "in"         !IdentifierPart
+OfToken         = "OF"i        !IdentifierPart // mixed case (vfixupimmsd)
+VoidToken       = "void"       !IdentifierPart
 
 __
   = (WhiteSpace / LineTerminatorSequence)*
@@ -495,12 +514,8 @@ PostfixOperator
 UnaryExpression
   = PostfixExpression
   / operator:UnaryOperator __ argument:UnaryExpression {
-      var type = (operator === "++" || operator === "--")
-        ? "UpdateExpression"
-        : "UnaryExpression";
-
       return {
-        type: type,
+        type: "UnaryExpression",
         operator: operator,
         argument: argument,
         prefix: true
@@ -508,8 +523,7 @@ UnaryExpression
     }
 
 UnaryOperator
-  = $DeleteToken
-  / $VoidToken
+  = $VoidToken
   / "++"
   / "--"
   / $("+" !"=")
@@ -582,71 +596,57 @@ EqualityExpressionNoIn
 EqualityOperator
   = "=="
   / "!="
+  // Sometimes Intel uses "=", see rdseed
 
 BitwiseANDExpression
   = head:EqualityExpression
-    tail:(__ BitwiseANDOperator __ EqualityExpression)*
+    tail:(__ AndToken __ EqualityExpression)*
     { return buildBinaryExpression(head, tail); }
 
 BitwiseANDExpressionNoIn
   = head:EqualityExpressionNoIn
-    tail:(__ BitwiseANDOperator __ EqualityExpressionNoIn)*
+    tail:(__ AndToken __ EqualityExpressionNoIn)*
     { return buildBinaryExpression(head, tail); }
-
-BitwiseANDOperator
-  = $("&" ![&=])
 
 BitwiseXORExpression
   = head:BitwiseANDExpression
-    tail:(__ BitwiseXOROperator __ BitwiseANDExpression)*
+    tail:(__ XorToken __ BitwiseANDExpression)*
     { return buildBinaryExpression(head, tail); }
 
 BitwiseXORExpressionNoIn
   = head:BitwiseANDExpressionNoIn
-    tail:(__ BitwiseXOROperator __ BitwiseANDExpressionNoIn)*
+    tail:(__ XorToken __ BitwiseANDExpressionNoIn)*
     { return buildBinaryExpression(head, tail); }
-
-BitwiseXOROperator
-  = $("^" !"=")
 
 BitwiseORExpression
   = head:BitwiseXORExpression
-    tail:(__ BitwiseOROperator __ BitwiseXORExpression)*
+    tail:(__ OrToken __ BitwiseXORExpression)*
     { return buildBinaryExpression(head, tail); }
 
 BitwiseORExpressionNoIn
   = head:BitwiseXORExpressionNoIn
-    tail:(__ BitwiseOROperator __ BitwiseXORExpressionNoIn)*
+    tail:(__ OrToken __ BitwiseXORExpressionNoIn)*
     { return buildBinaryExpression(head, tail); }
-
-BitwiseOROperator
-  = $("|" ![|=])
 
 LogicalANDExpression
   = head:BitwiseORExpression
-    tail:(__ LogicalANDOperator __ BitwiseORExpression)*
+    tail:(__ AndToken __ BitwiseORExpression)*
     { return buildLogicalExpression(head, tail); }
 
 LogicalANDExpressionNoIn
   = head:BitwiseORExpressionNoIn
-    tail:(__ LogicalANDOperator __ BitwiseORExpressionNoIn)*
+    tail:(__ AndToken __ BitwiseORExpressionNoIn)*
     { return buildLogicalExpression(head, tail); }
-
-LogicalANDOperator
-  = "&&"
 
 LogicalORExpression
   = head:LogicalANDExpression
-    tail:(__ LogicalOROperator __ LogicalANDExpression)*
+    tail:(__ OrToken __ LogicalANDExpression)*
     { return buildLogicalExpression(head, tail); }
 
 LogicalORExpressionNoIn
   = head:LogicalANDExpressionNoIn
-    tail:(__ LogicalOROperator __ LogicalANDExpressionNoIn)*
+    tail:(__ OrToken __ LogicalANDExpressionNoIn)*
     { return buildLogicalExpression(head, tail); }
-
-LogicalOROperator
-  = "||"
 
 ConditionalExpression
   = test:LogicalORExpression __
@@ -727,17 +727,9 @@ AssignmentExpressionNoIn
   / ConditionalExpressionNoIn
 
 AssignmentOperator
-  = "*="
-  / "/="
-  / "%="
-  / "+="
+  = "+="
   / "-="
-  / "<<="
-  / ">>="
-  / ">>>="
-  / "&="
-  / "^="
-  / "|="
+  // As of 3.4.2 Intel only uses +=
 
 Expression
   = head:AssignmentExpression tail:(__ "," __ AssignmentExpression)* {
@@ -762,7 +754,8 @@ Statement
   / IterationStatement
   / ReturnStatement
   / LabelledStatement
-  / SwitchStatement
+  / CaseStatement
+  / EnumDeclaration
 
 Block
   = "{" __ body:(StatementList __)? "}" {
@@ -843,13 +836,10 @@ IfStatement
     }
 
 IterationStatement
-  = DoToken __
-    body:Statement __
-    WhileToken __ "(" __ test:Expression __ ")" EOS
-    { return { type: "DoWhileStatement", body: body, test: test }; }
-  / WhileToken __ "(" __ test:Expression __ ")" __
-    body:Statement
-    { return { type: "WhileStatement", test: test, body: body }; }
+  = DoWhileToken _ test:Expression _ LineTerminatorSequence
+    __ body:(StatementList __)?
+    EndDoWhileToken _ LineTerminatorSequence
+    { return { type: "DoWhileStatement", test: test, body: body }; }
   / ForToken _ init:(ExpressionNoIn _) "to" _ varmax:Expression _ LineTerminatorSequence
     __ body:(StatementList __)?
     EndForToken _ LineTerminatorSequence
@@ -870,25 +860,26 @@ ReturnStatement
       return { type: "ReturnStatement", argument: argument };
     }
 
-SwitchStatement
-  = SwitchToken __ "(" __ discriminant:Expression __ ")" __
+CaseStatement
+  = CaseToken _ discriminant:Expression _ OfToken _ LineTerminatorSequence
     cases:CaseBlock
+    EndCaseToken
     {
       return {
-        type: "SwitchStatement",
+        type: "CaseStatement",
         discriminant: discriminant,
         cases: cases
       };
     }
 
 CaseBlock
-  = "{" __ clauses:(CaseClauses __)? "}" {
+  = __ clauses:(CaseClauses __)? {
       return optionalList(extractOptional(clauses, 0));
     }
-  / "{" __
+  / __
     before:(CaseClauses __)?
     default_:DefaultClause __
-    after:(CaseClauses __)? "}"
+    after:(CaseClauses __)?
     {
       return optionalList(extractOptional(before, 0))
         .concat(default_)
@@ -899,18 +890,18 @@ CaseClauses
   = head:CaseClause tail:(__ CaseClause)* { return buildList(head, tail, 1); }
 
 CaseClause
-  = CaseToken __ test:Expression __ ":" consequent:(__ StatementList)? {
+  = __ test:Expression __ ":" consequent:(__ Statement)? {
       return {
-        type: "SwitchCase",
+        type: "Case",
         test: test,
         consequent: optionalList(extractOptional(consequent, 1))
       };
     }
 
 DefaultClause
-  = DefaultToken __ ":" consequent:(__ StatementList)? {
+  = DefaultToken __ ":" consequent:(__ Statement)? {
       return {
-        type: "SwitchCase",
+        type: "Case",
         test: null,
         consequent: optionalList(extractOptional(consequent, 1))
       };
@@ -919,6 +910,38 @@ DefaultClause
 LabelledStatement
   = label:Identifier __ ":" __ body:Statement {
       return { type: "LabeledStatement", label: label, body: body };
+    }
+
+EnumDeclaration
+  = EnumToken _ id:Identifier _ "{" _ LineTerminatorSequence
+    members:EnumMemberList
+    "}" {
+      return {
+        type: "Enum",
+        id,
+        values: optionalList(members)
+      }
+    }
+
+EnumMemberList
+  = __ clauses:(EnumMembers __)? {
+      return optionalList(extractOptional(clauses, 0));
+    }
+
+EnumMembers
+  = head:(__ member:EnumMember _ "," _ LineTerminatorSequence { return member; })*
+    tail:(__ member:EnumMember { return member; } )
+    {
+      return head.concat([tail]);
+    }
+
+EnumMember
+  = __ propName:LeftHandSideExpression _ ":=" _ enumValue:NumericLiteral {
+      return {
+        type: "EnumMember",
+        propName,
+        enumValue
+      };
     }
 
 // ----- A.5 Functions and Programs -----
