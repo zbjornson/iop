@@ -45,8 +45,20 @@ FOR j := 0 to 3
 ENDFOR
 dst[MAX:256] := 0
 `;
-// console.dir(parser.parse(vpermilpd), {depth: null});
 
+const test = `
+FOR j := 0 to 7
+        i := j*8
+        IF b[i+7] == 1
+                dst[i+7:i] := 0
+        ELSE
+                index[2:0] := b[i+2:i]
+                dst[i+7:i] := a[index*8+7:index*8]
+        FI
+ENDFOR
+`;
+console.dir(parser.parse(test.trim()), { depth: null });
+console.log(test.trim())
 const vplzcntd = `
 FOR j := 0 to 7
 	i := j*32
@@ -133,7 +145,7 @@ FI
 dst[127:64] := a[127:64]
 dst[MAX:128] := 0
 `;
-console.dir(parser.parse(vfixupimmsd), { depth: null });
+//console.dir(parser.parse(vfixupimmsd), { depth: null });
 
 // This one has a variable OP operation
 const vcmppd = `

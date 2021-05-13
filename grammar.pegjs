@@ -860,7 +860,7 @@ IterationStatement
     { return { type: "DoWhileStatement", test: test, body: body }; }
   / ForToken _ init:(ExpressionNoIn _) "to" _ varmax:Expression _ LineTerminatorSequence
     __ body:(StatementList __)?
-    EndForToken _ LineTerminatorSequence
+    EndForToken _ LineTerminatorSequence*
     {
       return {
         type: "ForStatement",
