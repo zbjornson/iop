@@ -801,8 +801,25 @@ ExpressionStatement
       };
     }
 
+ExpressionInlined
+  = !("{") expression:Expression ";" {
+      return {
+        type: "ExpressionStatement",
+        expression
+      };
+    }
+
 IfStatement
   = IfToken _ test:Expression _ ThenToken? _ consequent:ExpressionStatement
+    {
+      return {
+        type: "IfStatement",
+        test,
+        consequent,
+        alternate: null
+      }
+    }
+  / IfToken _ test:Expression _ ThenToken? _ consequent:ExpressionInlined _ EndIfToken
     {
       return {
         type: "IfStatement",
@@ -970,7 +987,22 @@ Parameter
     }
 
 FunctionDeclaration
-  = id:Identifier "(" params:(FormalParameterList _)? ")" _ "{"
+  = NoDefineFunction
+  / DefineFunction
+
+NoDefineFunction = id:Identifier "(" params:(FormalParameterList _)? ")" _ "{"
+    __ body:FunctionBody __
+    "}"
+    {
+      return {
+        type: "FunctionDeclaration",
+        id,
+        params: optionalList(extractOptional(params, 0)),
+        body
+      };
+    }
+
+DefineFunction = "DEFINE " id:Identifier "(" params:(FormalParameterList _)? ")" _ "{"
     __ body:FunctionBody __
     "}"
     {
@@ -1011,3 +1043,4 @@ SourceElements
 SourceElement
   = Statement
   / FunctionDeclaration
+ // / "DEFINE " FunctionDeclaration

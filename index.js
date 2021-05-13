@@ -133,7 +133,7 @@ FI
 dst[127:64] := a[127:64]
 dst[MAX:128] := 0
 `;
-console.dir(parser.parse(vfixupimmsd), {depth: null});
+console.dir(parser.parse(vfixupimmsd), { depth: null });
 
 // This one has a variable OP operation
 const vcmppd = `

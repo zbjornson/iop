@@ -1,9 +1,33 @@
-Mostly complete parser/gramamr for Intel's intrinsics pseudocode. There are still some edge cases to work out (minor errors and inconsistencies in the pseudocode).
+# iop - Intrinsics Operations Parser
 
+Mostly complete parser/grammar for Intel's Intrinsics pseudo-code (`Operation`
+field on Intel's documentation). There are still some edge cases to work out
+(minor errors and inconsistencies in the pseudo-code).
 
-After cloning this repo, use `yarn get-data` to fetch Intel's intrinsic guide.
+# Getting started
 
-Example of `vplzcntd`:
+## Dependencies
+
+Code is written in JavaScript.
+
+- [`sax`](https://github.com/isaacs/sax-js): sax-style parser for XML and HTML.
+- [`pegjs`](https://pegjs.org/): simple parser generator for JavaScript
+
+Dependencies can be managed easily with `npm` (will be installed with `Node.js`).
+
+## How to run
+
+```
+git clone https://github.com/zbjornson/iop
+cd iop
+mkdir data
+node get-data.js
+npm install sax pegjs
+```
+
+## Example
+
+`__m256i _mm256_lzcnt_epi32(__m256i a)` (assembly instruction `vplzcntd`, CPUID AVX512VL + AVX512CD):
 
 ```
 FOR j := 0 to 7
@@ -17,6 +41,8 @@ FOR j := 0 to 7
 ENDFOR
 dst[MAX:256] := 0
 ```
+
+JSON structure generated from parsing:
 
 ```JS
 {
@@ -196,10 +222,10 @@ dst[MAX:256] := 0
 
 ---
 
-Notes:
+# Notes:
 
 1. Some incorrect characters appear in the Intel documents. The following replacements should be made:
    ```js
-   x2013: "-" // en dash
-   x2044: "/"
+   x2013: "-"; // en dash
+   x2044: "/";
    ```
