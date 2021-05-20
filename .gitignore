@@ -2,3 +2,6 @@
 # re-serve them.
 data
 node_modules
+.vscode
+.pytest_cache
+*lock.json

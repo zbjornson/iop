@@ -45,8 +45,22 @@ FOR j := 0 to 3
 ENDFOR
 dst[MAX:256] := 0
 `;
-// console.dir(parser.parse(vpermilpd), {depth: null});
 
+// _mm_shuffle_pi8 macro
+const pshufb = `
+FOR j := 0 to 7
+        i := j*8
+        IF b[i+7] == 1
+                dst[i+7:i] := 0
+        ELSE
+                index[2:0] := b[i+2:i]
+                dst[i+7:i] := a[index*8+7:index*8]
+        FI
+ENDFOR
+`;
+
+console.dir(parser.parse(test.trim()), { depth: null });
+console.log(test.trim())
 const vplzcntd = `
 FOR j := 0 to 7
 	i := j*32
@@ -133,7 +147,7 @@ FI
 dst[127:64] := a[127:64]
 dst[MAX:128] := 0
 `;
-console.dir(parser.parse(vfixupimmsd), {depth: null});
+//console.dir(parser.parse(vfixupimmsd), { depth: null });
 
 // This one has a variable OP operation
 const vcmppd = `
@@ -163,10 +177,10 @@ CASE (imm8[7:0]) OF
 22: OP := _CMP_NLE_UQ
 23: OP := _CMP_ORD_S
 24: OP := _CMP_EQ_US
-25: OP := _CMP_NGE_UQ 
-26: OP := _CMP_NGT_UQ 
-27: OP := _CMP_FALSE_OS 
-28: OP := _CMP_NEQ_OS 
+25: OP := _CMP_NGE_UQ
+26: OP := _CMP_NGT_UQ
+27: OP := _CMP_FALSE_OS
+28: OP := _CMP_NEQ_OS
 29: OP := _CMP_GE_OQ
 30: OP := _CMP_GT_OQ
 31: OP := _CMP_TRUE_US
