@@ -22,8 +22,10 @@ git clone https://github.com/zbjornson/iop
 cd iop
 mkdir data
 node get-data.js
-npm install sax pegjs
+npm install
 ```
+
+
 
 ## Example
 

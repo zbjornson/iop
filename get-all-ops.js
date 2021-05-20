@@ -1,10 +1,10 @@
 const fs = require("fs");
 const sax = require("sax");
-const saxparser = sax.parser(true);
+const saxparser = sax.parser();
 const peg = require("pegjs");
 const parser = peg.generate(fs.readFileSync("./grammar.pegjs", "utf8"), {});
 
-const techs = ["MMX", "SSE", "SSE3", "SSSE3", "SSE4.1", "SSE4.2", "AVX", "AVX2", "AVX-512"];
+const techs = ["MMX", "SSE", "SSE2", "SSE3", "SSSE3", "SSE4.1", "SSE4.2", "AVX", "AVX2", "AVX-512"];
 const specialTechs = ["KNC", "AMX", "SVML", "Other"];
 
 // TODO: these are current arguments
@@ -13,33 +13,38 @@ const specialTech = "";
 const categories = ["Load", "Swizzle"];
 const ops = [];
 
-let debug = true;
+let debug = false;
 
 let currentTech = "";
 let intrinName = "";
+let currentCat = [];
 let skip = true;
 
 saxparser.onopentag = ({ name, attributes }) => {
-  if (name === "intrinsic") {
-    currentTech = attributes.tech;
-    intrinName = attributes.name;
+  if (name === "INTRINSIC") {
+    currentTech = attributes.TECH;
+    intrinName = attributes.NAME;
+    currentCat = [];
     skip = true;
   }
 }
 
 saxparser.ontext = text => {
-  if (saxparser.tag.name === "category") {
+  if (saxparser.tag.name === "CATEGORY") {
     for (let cat of categories) {
       if (text === cat) {
         skip = false;
-        break;
+        currentCat.push(cat);
       }
     }
   }
-  if (saxparser.tag.name === "operation") {
-    if ((techs.includes(currentTech) && (techs.indexOf(currentTech) <= techs.indexOf(maxTech))) || ((specialTechs.includes(currentTech) && currentTech === specialTech))) {
+  if (saxparser.tag.name === "OPERATION") {
+    if ((techs.includes(currentTech) && (techs.indexOf(currentTech) <= techs.indexOf(maxTech))) || ((specialTechs.includes(specialTech) && currentTech === specialTech))) {
       if ((!skip) && (text.trim())) {
-        ops.push({ name: intrinName, operation: text.trim() });
+        ops.push({
+          name: intrinName, category: currentCat, operation:
+            text.trim()
+        });
       }
     }
   }
@@ -47,20 +52,42 @@ saxparser.ontext = text => {
 
 saxparser.write(fs.readFileSync("./data/data.xml", "utf8")).close();
 
+let correctParsing = 0;
+let incorrectParsing = 0;
+
+if (!debug) {
+  // Print as list
+  console.log("{");
+}
+
 for (const op of ops) {
   try {
+    // Ignore Macros, as they are not contemplated (only 9 cases among all intrinsics)
+    if (op.name.startsWith("_MM_")) {
+      continue;
+    }
     let operation = parser.parse(op.operation);
     if (!debug) {
-      console.dir(operation, { depth: null });
+      console.dir({ name: op.name, category: op.category, op: operation }, { depth: null });
+      console.log(",");
     } else {
       console.log("✔", op.name);
-      if (op.name === "_mm256_shuffle_ps") console.dir(parser.parse(op.operation), { depth: null });
     }
+    correctParsing++;
   } catch (ex) {
     if (debug) {
       console.log("✘", op.name);
       console.log("✘", op.operation);
     }
-    console.log("{ " + op.name + ": None }")
+    console.log("{ " + op.name + ": None }");
+    incorrectParsing++;
   }
+}
+
+if (debug) {
+  console.log("Correct parsing = " + correctParsing);
+  console.log("Incorrect parsing = " + incorrectParsing);
+} else {
+  // Close list
+  console.log("}");
 }
